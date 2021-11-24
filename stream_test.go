@@ -1,11 +1,14 @@
 package gostream
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var testErrStream = &errStream{err: errors.New("")}
@@ -888,4 +891,67 @@ func testStreamMapToF64(t *testing.T, stream func([]*element) Stream) {
 		assert.NoError(t, err)
 		assertFloat64SliceEquals(t, tt.expect, dest)
 	}
+}
+
+type TestModel struct {
+	Name  string
+	Age   int
+	Birth time.Time
+}
+
+func mockTestModelData() []*TestModel {
+	mockNames := []string{"niko", "mark", "shelly", "jack", "roman", "alisa"}
+
+	mockData := make([]*TestModel, 0, len(mockNames))
+
+	for _, name := range mockNames {
+		model := &TestModel{}
+		model.Name = name
+		model.Age = mockAge()
+		model.Birth = time.Now().AddDate(model.Age*-1, 0, 0)
+
+		mockData = append(mockData, model)
+	}
+
+	return mockData
+}
+
+func mockAge() int {
+	rand.Seed(time.Now().UnixNano())
+	randNum := rand.Intn(50)
+	return randNum
+}
+
+func TestStreamFilter(t *testing.T) {
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	t.Log("获取名字为mark的信息")
+
+	var model []*TestModel
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "mark"
+	}).Collect(&model)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	by, err := json.Marshal(model)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(string(by))
+
 }
