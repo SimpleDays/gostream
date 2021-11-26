@@ -29,7 +29,7 @@ type Stream interface {
 	// Distinct returns a stream consisting of the distinct elements of this stream.
 	// hashcode should return the hashcode of obj, 2 equals object should return the same hashcode.
 	// equals should return true if a and b are equal, otherwise should return false.
-	Distinct(hashcode func(obj interface{}) int, equals func(a, b interface{}) bool) Stream
+	Distinct(hashcode func(obj interface{}) interface{}, equals func(a, b interface{}) bool) Stream
 	// Filter returns a stream consisting of the elements of this stream that match the given predicate.
 	Filter(predicate func(val interface{}) (match bool)) Stream
 	// FlatMap returns a stream consisting of the results of replacing each element of this stream with the contents of
@@ -266,11 +266,35 @@ func (s *sequentialStream) Sorted(less func(a, b interface{}) bool) Stream {
 	return &sequentialStream{elements: newElements}
 }
 
-func (s *sequentialStream) Distinct(hashcode func(obj interface{}) int, equals func(a, b interface{}) bool) Stream {
+func (s *sequentialStream) Distinct(hashcode func(obj interface{}) interface{}, equals func(a, b interface{}) bool) Stream {
 	if len(s.elements) <= 1 {
 		return s
 	}
-	elementMap := make(map[int][]interface{}, len(s.elements))
+	elementMap := make(map[interface{}][]interface{}, len(s.elements))
+	newElements := make([]*element, 0)
+	for _, elem := range s.elements {
+		code := hashcode(elem.data)
+		duplicated := false
+		seens := elementMap[code]
+		for _, seen := range seens {
+			if equals(elem.data, seen) {
+				duplicated = true
+				break
+			}
+		}
+		if !duplicated {
+			elementMap[code] = append(seens, elem.data)
+			newElements = append(newElements, elem)
+		}
+	}
+	return &sequentialStream{elements: newElements}
+}
+
+func (s *sequentialStream) Dist(hashcode func(obj interface{}) interface{}, equals func(a, b interface{}) bool) Stream {
+	if len(s.elements) <= 1 {
+		return s
+	}
+	elementMap := make(map[interface{}][]interface{}, len(s.elements))
 	newElements := make([]*element, 0)
 	for _, elem := range s.elements {
 		code := hashcode(elem.data)
@@ -344,11 +368,11 @@ func (p *parallelStream) Collect(collector interface{}) (err error) {
 	return nil
 }
 
-func (p *parallelStream) Distinct(hashcode func(obj interface{}) int, equals func(a, b interface{}) bool) Stream {
+func (p *parallelStream) Distinct(hashcode func(obj interface{}) interface{}, equals func(a, b interface{}) bool) Stream {
 	if len(p.elements) <= 1 {
 		return p
 	}
-	elementMap := make(map[int][]interface{}, len(p.elements))
+	elementMap := make(map[interface{}][]interface{}, len(p.elements))
 	newElements := make([]*element, 0)
 	for _, elem := range p.elements {
 		code := hashcode(elem.data)
@@ -569,7 +593,7 @@ func (e *errStream) Collect(interface{}) error {
 	return e.err
 }
 
-func (e *errStream) Distinct(func(obj interface{}) int, func(a, b interface{}) bool) Stream {
+func (e *errStream) Distinct(func(obj interface{}) interface{}, func(a, b interface{}) bool) Stream {
 	return e
 }
 
