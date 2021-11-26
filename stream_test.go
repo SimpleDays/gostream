@@ -936,8 +936,7 @@ func TestStreamFilter(t *testing.T) {
 		t.Log(string(by))
 	}
 
-	t.Log("获取名字为mark的信息")
-
+	// 查询 TestModel 数组下 名字 叫 mark的
 	var model []*TestModel
 	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
 		return val.(*TestModel).Name == "mark"
@@ -955,6 +954,7 @@ func TestStreamFilter(t *testing.T) {
 
 	t.Log(string(by))
 
+	// 获取 TestModel 下 字段为 name 的 并且去重 返回一个 包含name的 数组
 	var names []string
 	err = NewSequentialStream(data).Map(func(src interface{}) (dest interface{}) {
 		return src.(*TestModel).Name
@@ -971,6 +971,25 @@ func TestStreamFilter(t *testing.T) {
 	}
 
 	t.Log(string(by2))
+
+	// 获取 TestModel 下 字段 Name 为 mark的 年龄
+	var ages []int
+	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "mark"
+	}).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Age
+	}).Collect(&ages)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	age := 0
+	if len(ages) > 0 {
+		age = ages[0]
+	}
+
+	t.Log("mark age is :", age)
 
 }
 
