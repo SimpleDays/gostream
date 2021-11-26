@@ -922,6 +922,153 @@ func mockAge() int {
 	return randNum
 }
 
+func TestStreamDistinct(t *testing.T) {
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	// 获取 TestModel 下 字段为 name 的 并且去重 返回一个 包含name的 数组
+	var names []string
+	err := NewSequentialStream(data).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Name
+	}).Distinct(func(obj interface{}) interface{} {
+		return obj
+	}, func(a, b interface{}) bool {
+		return a == b
+	}).Collect(&names)
+
+	by2, err := json.Marshal(names)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("Distinct TestModel name is: ", string(by2))
+}
+
+func TestStreamFirstOrDefault(t *testing.T) {
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	// 获取 TestModel 下 字段 Name 为 mark的 年龄
+	var age int
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "mark"
+	}).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Age
+	}).FirstOrDefault(&age)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("mark age is :", age)
+}
+
+func TestStreamFirstOrDefaultOil(t *testing.T) {
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	var name string
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "oli"
+	}).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Name
+	}).FirstOrDefault(&name)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("name == nil : ", name == "")
+}
+
+func TestStreamFirstOrDefaultStruct(t *testing.T) {
+
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	// 获取 TestModel 下 Name 字段为 niko 的一条对象信息
+	var nikoModel *TestModel
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "niko"
+	}).FirstOrDefault(&nikoModel)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	by3, err := json.Marshal(nikoModel)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("niko TestModel is: ", string(by3))
+}
+
+func TestStreamFirstOrDefaultNil(t *testing.T) {
+
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	// 获取 TestModel 下 Name 字段为 jackson 的一条对象信息
+	var jacksonModel *TestModel
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "jackson"
+	}).FirstOrDefault(&jacksonModel)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("jackson is nil ? ", jacksonModel == nil)
+}
+
 func TestStreamFilter(t *testing.T) {
 	data := mockTestModelData()
 
@@ -952,84 +1099,4 @@ func TestStreamFilter(t *testing.T) {
 	}
 
 	t.Log("mark is ", string(by))
-
-	// 获取 TestModel 下 字段为 name 的 并且去重 返回一个 包含name的 数组
-	var names []string
-	err = NewSequentialStream(data).Map(func(src interface{}) (dest interface{}) {
-		return src.(*TestModel).Name
-	}).Distinct(func(obj interface{}) interface{} {
-		return obj
-	}, func(a, b interface{}) bool {
-		return a == b
-	}).Collect(&names)
-
-	by2, err := json.Marshal(names)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log(string(by2))
-
-	// 获取 TestModel 下 字段 Name 为 mark的 年龄
-	var age int
-	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
-		return val.(*TestModel).Name == "mark"
-	}).Map(func(src interface{}) (dest interface{}) {
-		return src.(*TestModel).Age
-	}).FirstOrDefault(&age)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	//age := 0
-	//if len(ages) > 0 {
-	//	age = ages[0]
-	//}
-
-	t.Log("mark age is :", age)
-
-	var name string
-	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
-		return val.(*TestModel).Name == "oli"
-	}).Map(func(src interface{}) (dest interface{}) {
-		return src.(*TestModel).Name
-	}).FirstOrDefault(&name)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log("name == nil : ", name == "")
-
-	// 获取 TestModel 下 Name 字段为 niko 的一条对象信息
-	var nikoModel = &TestModel{}
-	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
-		return val.(*TestModel).Name == "niko"
-	}).FirstOrDefault(nikoModel)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	by3, err := json.Marshal(nikoModel)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log(string(by3))
-
-	// 获取 TestModel 下 Name 字段为 jackson 的一条对象信息
-	var jacksonModel TestModel
-	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
-		return val.(*TestModel).Name == "jackson"
-	}).FirstOrDefault(&jacksonModel)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log(jacksonModel)
 }
