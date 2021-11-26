@@ -951,7 +951,7 @@ func TestStreamFilter(t *testing.T) {
 		t.Error(err)
 	}
 
-	t.Log(string(by))
+	t.Log("mark is ", string(by))
 
 	// 获取 TestModel 下 字段为 name 的 并且去重 返回一个 包含name的 数组
 	var names []string
