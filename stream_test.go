@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"hash/crc32"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -973,39 +972,64 @@ func TestStreamFilter(t *testing.T) {
 	t.Log(string(by2))
 
 	// 获取 TestModel 下 字段 Name 为 mark的 年龄
-	var ages []int
+	var age int
 	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
 		return val.(*TestModel).Name == "mark"
 	}).Map(func(src interface{}) (dest interface{}) {
 		return src.(*TestModel).Age
-	}).Collect(&ages)
+	}).FirstOrDefault(&age)
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	age := 0
-	if len(ages) > 0 {
-		age = ages[0]
-	}
+	//age := 0
+	//if len(ages) > 0 {
+	//	age = ages[0]
+	//}
 
 	t.Log("mark age is :", age)
 
-}
+	var name string
+	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "oli"
+	}).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Name
+	}).FirstOrDefault(&name)
 
-// String hashes a string to a unique hashcode.
-//
-// crc32 returns a uint32, but for our use we need
-// and non negative integer. Here we cast to an integer
-// and invert it if the result is negative.
-func String(s string) int {
-	v := int(crc32.ChecksumIEEE([]byte(s)))
-	if v >= 0 {
-		return v
+	if err != nil {
+		t.Error(err)
 	}
-	if -v >= 0 {
-		return -v
+
+	t.Log("name == nil : ", name == "")
+
+	// 获取 TestModel 下 Name 字段为 niko 的一条对象信息
+	var nikoModel = &TestModel{}
+	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "niko"
+	}).FirstOrDefault(nikoModel)
+
+	if err != nil {
+		t.Error(err)
 	}
-	// v == MinInt
-	return 0
+
+	by3, err := json.Marshal(nikoModel)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(string(by3))
+
+	// 获取 TestModel 下 Name 字段为 jackson 的一条对象信息
+	var jacksonModel TestModel
+	err = NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "jackson"
+	}).FirstOrDefault(&jacksonModel)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(jacksonModel)
 }

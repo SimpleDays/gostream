@@ -23,6 +23,8 @@ type BaseStream interface {
 // Stream is a sequence of elements supporting sequential and parallel aggregate operations.
 type Stream interface {
 	BaseStream
+	// 返回默认一条数据或者参数，没有返回类型的默认值
+	FirstOrDefault(obj interface{}) error
 	// Collect write the elements in the stream to the collector, the collector should be a pointer to Slice
 	// than can store the elements in the stream.
 	Collect(collector interface{}) error
@@ -290,28 +292,38 @@ func (s *sequentialStream) Distinct(hashcode func(obj interface{}) interface{}, 
 	return &sequentialStream{elements: newElements}
 }
 
-func (s *sequentialStream) Dist(hashcode func(obj interface{}) interface{}, equals func(a, b interface{}) bool) Stream {
-	if len(s.elements) <= 1 {
-		return s
-	}
-	elementMap := make(map[interface{}][]interface{}, len(s.elements))
-	newElements := make([]*element, 0)
-	for _, elem := range s.elements {
-		code := hashcode(elem.data)
-		duplicated := false
-		seens := elementMap[code]
-		for _, seen := range seens {
-			if equals(elem.data, seen) {
-				duplicated = true
-				break
-			}
+func (s *sequentialStream) FirstOrDefault(obj interface{}) (err error) {
+	defer func() {
+		// 当stream内的元素类型不能赋值到collector中时会产生panic，要recover处理掉
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic when elemnt result into object, recover=%v", r)
 		}
-		if !duplicated {
-			elementMap[code] = append(seens, elem.data)
-			newElements = append(newElements, elem)
+	}()
+
+	objReflectValue := reflect.ValueOf(obj)
+	kind := objReflectValue.Elem().Kind()
+	result := objReflectValue.Elem()
+
+	if len(s.elements) <= 0 {
+		if kind == reflect.Struct {
+			obj = nil
 		}
+		return nil
 	}
-	return &sequentialStream{elements: newElements}
+
+	if kind == reflect.Slice {
+		return fmt.Errorf("cannot result into object, object is a slice:  %s", objReflectValue.Type())
+	}
+
+	defaultElement := s.elements[0]
+
+	if reflectValue := defaultElement.reflectValue; reflectValue.Kind() == reflect.Interface || kind == reflect.Struct {
+		result.Set(reflectValue.Elem())
+	} else {
+		result.Set(reflectValue)
+	}
+
+	return nil
 }
 
 func (s *sequentialStream) Collect(collector interface{}) (err error) {
@@ -321,6 +333,7 @@ func (s *sequentialStream) Collect(collector interface{}) (err error) {
 			err = fmt.Errorf("panic when pack results into collector, recover=%v", r)
 		}
 	}()
+
 	collectorReflectValue := reflect.ValueOf(collector)
 	if collectorReflectValue.Kind() != reflect.Ptr || collectorReflectValue.Elem().Kind() != reflect.Slice {
 		return fmt.Errorf("cannot pack results into collector, collector is a %s but not a slice pointer", collectorReflectValue.Type())
@@ -343,6 +356,11 @@ func (s *sequentialStream) Err() error {
 
 func (p *parallelStream) IsParallel() bool {
 	return true
+}
+
+func (p *parallelStream) FirstOrDefault(obj interface{}) error {
+
+	return nil
 }
 
 func (p *parallelStream) Collect(collector interface{}) (err error) {
@@ -587,6 +605,10 @@ func (e *errStream) Parallel() Stream {
 		return e
 	}
 	return &errStream{err: e.err, parallel: true}
+}
+
+func (e *errStream) FirstOrDefault(interface{}) error {
+	return e.err
 }
 
 func (e *errStream) Collect(interface{}) error {
