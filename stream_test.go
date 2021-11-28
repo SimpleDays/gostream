@@ -897,6 +897,12 @@ type TestModel struct {
 	Name  string
 	Age   int
 	Birth time.Time
+	Books []TestBook
+}
+
+type TestBook struct {
+	BookName  string
+	BookPrice float64
 }
 
 func mockTestModelData() []*TestModel {
@@ -909,6 +915,20 @@ func mockTestModelData() []*TestModel {
 		model.Name = name
 		model.Age = mockAge()
 		model.Birth = time.Now().AddDate(model.Age*-1, 0, 0)
+
+		books := make([]TestBook, 0, 2)
+
+		books = append(books, TestBook{
+			BookName:  "代码的整洁之道",
+			BookPrice: 90,
+		})
+
+		books = append(books, TestBook{
+			BookName:  "程序员的自我修养",
+			BookPrice: 90,
+		})
+
+		model.Books = books
 
 		mockData = append(mockData, model)
 	}
@@ -1099,4 +1119,31 @@ func TestStreamFilter(t *testing.T) {
 	}
 
 	t.Log("mark is ", string(by))
+}
+
+func TestStreamFirstOrDefaultBooks(t *testing.T) {
+	data := mockTestModelData()
+
+	for _, d := range data {
+		by, err := json.Marshal(d)
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(string(by))
+	}
+
+	var books []TestBook
+	err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+		return val.(*TestModel).Name == "mark"
+	}).Map(func(src interface{}) (dest interface{}) {
+		return src.(*TestModel).Books
+	}).FirstOrDefault(&books)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("books : ", books)
 }

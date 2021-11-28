@@ -311,10 +311,6 @@ func (s *sequentialStream) FirstOrDefault(obj interface{}) (err error) {
 		return nil
 	}
 
-	if kind == reflect.Slice {
-		return fmt.Errorf("cannot result into object, object is a slice:  %s", objReflectValue.Type())
-	}
-
 	defaultElement := s.elements[0]
 
 	if reflectValue := defaultElement.reflectValue; reflectValue.Kind() == reflect.Interface || kind == reflect.Struct {
