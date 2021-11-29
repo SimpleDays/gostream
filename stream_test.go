@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ahmetb/go-linq/v3"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"reflect"
@@ -1153,6 +1154,7 @@ func TestStreamFirstOrDefaultBooks(t *testing.T) {
 /*
 BenchmarkStreamFilter-8   	    4174	    265807 ns/op 	0.265807ms 4174
 BenchmarkGolangFor-8   	  312789	      3197 ns/op	0.003197  312789
+BenchmarkGoLinq-8   	 3073786	       372 ns/op
 */
 func BenchmarkStreamFilter(b *testing.B) {
 	data := mockTestModelData()
@@ -1190,5 +1192,19 @@ func BenchmarkGolangFor(b *testing.B) {
 				_ = d.Books
 			}
 		}
+	}
+}
+
+func BenchmarkGoLinq(b *testing.B) {
+	data := mockTestModelData()
+
+	for n := 0; n < b.N; n++ {
+
+		linq.From(data).Where(func(i interface{}) bool {
+			return i.(*TestModel).Name == "mark"
+		}).Select(func(i interface{}) interface{} {
+			return i.(*TestModel).Books
+		}).First()
+
 	}
 }
