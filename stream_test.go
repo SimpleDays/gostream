@@ -910,27 +910,29 @@ func mockTestModelData() []*TestModel {
 
 	mockData := make([]*TestModel, 0, len(mockNames))
 
-	for _, name := range mockNames {
-		model := &TestModel{}
-		model.Name = name
-		model.Age = mockAge()
-		model.Birth = time.Now().AddDate(model.Age*-1, 0, 0)
+	for i := 0; i < 500; i++ {
+		for _, name := range mockNames {
+			model := &TestModel{}
+			model.Name = name
+			model.Age = mockAge()
+			model.Birth = time.Now().AddDate(model.Age*-1, 0, 0)
 
-		books := make([]TestBook, 0, 2)
+			books := make([]TestBook, 0, 2)
 
-		books = append(books, TestBook{
-			BookName:  "代码的整洁之道",
-			BookPrice: 90,
-		})
+			books = append(books, TestBook{
+				BookName:  "代码的整洁之道",
+				BookPrice: 90,
+			})
 
-		books = append(books, TestBook{
-			BookName:  "程序员的自我修养",
-			BookPrice: 90,
-		})
+			books = append(books, TestBook{
+				BookName:  "程序员的自我修养",
+				BookPrice: 90,
+			})
 
-		model.Books = books
+			model.Books = books
 
-		mockData = append(mockData, model)
+			mockData = append(mockData, model)
+		}
 	}
 
 	return mockData
@@ -1146,4 +1148,47 @@ func TestStreamFirstOrDefaultBooks(t *testing.T) {
 	}
 
 	t.Log("books : ", books)
+}
+
+/*
+BenchmarkStreamFilter-8   	    4174	    265807 ns/op 	0.265807ms 4174
+BenchmarkGolangFor-8   	  312789	      3197 ns/op	0.003197  312789
+*/
+func BenchmarkStreamFilter(b *testing.B) {
+	data := mockTestModelData()
+
+	//for _, d := range data {
+	//	by, err := json.Marshal(d)
+	//
+	//	if err != nil {
+	//		b.Error(err)
+	//	}
+	//}
+
+	for n := 0; n < b.N; n++ {
+		var books []TestBook
+		err := NewSequentialStream(data).Filter(func(val interface{}) (match bool) {
+			return val.(*TestModel).Name == "mark"
+		}).Map(func(src interface{}) (dest interface{}) {
+			return src.(*TestModel).Books
+		}).FirstOrDefault(&books)
+
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
+}
+
+func BenchmarkGolangFor(b *testing.B) {
+	data := mockTestModelData()
+
+	for n := 0; n < b.N; n++ {
+		var _ []TestBook
+		for _, d := range data {
+			if d.Name == "mark" {
+				_ = d.Books
+			}
+		}
+	}
 }
